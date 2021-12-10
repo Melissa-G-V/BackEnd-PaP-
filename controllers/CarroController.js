@@ -8,28 +8,26 @@ module.exports = {
   // destroy: exclusão
 
   async index(req, res) {
-    // const carros = await knex("carros")
-    //   .join("marcas", "carros.marca_id", "=", "marcas.id")
-    //   .orderBy("carros.id", "desc");
+    // const produtos = await knex("produtos")
+    //   .join("marcas", "produtos.marca_id", "=", "marcas.id")
+    //   .orderBy("produtos.id", "desc");
 
-    const carros = await knex
-      .select("c.id", "c.modelo", "m.nome as marca", "c.ano", "c.preco", "c.foto", "c.destaque")
-      .from("carros as c")
-      .leftJoin("marcas as m", "c.marca_id", "m.id")
-      .orderBy("c.id", "desc");
-    res.status(200).json(carros);
+    const produtos = await knex
+      .select("p.id", "p.p_nome",  "p.preco","p.descricao", "p.foto", "p.destaque")
+      .from("produtos as p")
+      .orderBy("p.destaque", "desc");
+    res.status(200).json(produtos);
   },
 
 
   async index2(req, res) {
   
-    const carros = await knex
-      .select("c.id", "c.modelo","r.comentario","r.usuarios_id","r.estrelas","c.foto","m.nome as marca", "c.ano", "c.preco", "c.foto", "c.destaque")
-      .from("carros as c")
-      .leftJoin("marcas as m", "c.marca_id", "m.id")
-      .leftJoin("reviews as r", "c.id", "r.carros_id").whereNotNull('r.id')
-      .orderBy("c.id", "desc");
-    res.status(200).json(carros);
+    const produtos = await knex
+      .select("p.id", "p.p_nome","c.usuarios_id","p.foto","p.preco", "p.descricao","p.foto", "p.destaque")
+      .from("produtos as p")
+      .leftJoin("compras as c", "p.id", "c.produtos_id").whereNotNull('c.id')
+      .orderBy("p.id", "desc");
+    res.status(200).json(produtos);
   },
 
 
@@ -37,54 +35,50 @@ module.exports = {
   async show(req, res) {
     const id = req.params.id; // ou:  const { id } = req.params
 
-    const carro = await knex
-      .select("c.id", "c.modelo", "c.marca_id", "m.nome as marca", "c.ano", "c.preco", "c.foto", "c.destaque")
-      .from("carros as c")
-      .leftJoin("marcas as m", "c.marca_id", "m.id")
-      .where("c.id", id)
-    res.status(200).json(carro[0]);
+    const produto = await knex
+      .select("p.id", "p.p_nome", "p.preco","p.descricao", "p.foto", "p.destaque")
+      .from("produtos as p")
+      .where("p.id", id)
+    res.status(200).json(produto[0] ,'item');
   },
 
   async search(req, res) {
     const palavra = req.params.palavra; 
 
-    const carros = await knex
-      .select("c.id", "c.modelo", "m.nome as marca", "c.ano", "c.preco", "c.foto", "c.destaque")
-      .from("carros as c")
-      .leftJoin("marcas as m", "c.marca_id", "m.id")
-      .where("modelo", "like", "%"+palavra+"%")
-      .orWhere("m.nome", "like", "%"+palavra+"%")
-      .orderBy("c.id", "desc");
-    res.status(200).json(carros);
+    const produtos = await knex
+      .select("p.id", "p.p_nome",  "p.preco", "p.descricao","p.foto", "p.destaque")
+      .from("produtos as p")
+      .where("p_nome", "like", "%"+palavra+"%")
+      .orderBy("p.id", "desc");
+    res.status(200).json(produtos);
   },
 
   async store(req, res) {
     console.log(req.body)
 
     // desestruturação do objeto request
-    const { modelo, marca_id, ano, preco, foto } = req.body;
+    const { p_nome, preco, foto, descricao } = req.body;
 
-    if (!modelo) {
+    if (!p_nome) {
       res.status(400).json({
-        erro: "faltou modelo",
+        erro: "faltou p_nome",
       });
       return;
     }
 
     // se algum dos atributos não for passado
-    if (!modelo || !marca_id || !ano || !preco || !foto) {
+    if (!p_nome || !preco || !foto|| !descricao) {
       res.status(400).json({
-        erro: "Enviar modelo, marca_id, ano, preco e foto do veículo",
+        erro: "Enviar p_nome, marca_id, ano, preco e foto do veículo",
       });
       return;
     }
 
     try {
-      const novo = await knex("carros").insert({
-        modelo,
-        marca_id,
-        ano,
+      const novo = await knex("produtos").insert({
+        p_nome,
         preco,
+        descricao,
         foto,
       });
       res.status(201).json({ id: novo[0] });
@@ -95,12 +89,12 @@ module.exports = {
   
   async destaque(req, res) {
     const id = req.params.id; // ou:  const { id } = req.params
-    dados = await knex("carros").where({ id });
+    dados = await knex("produtos").where({ id });
 //    console.log(dados[0]);
 
     if (dados[0].destaque) {
       try {
-        await knex("carros").update({ destaque: 0 }).where({ id });
+        await knex("produtos").update({ destaque: 0 }).where({ id });
         res.status(200).json({ ok: 1 });
       } catch (error) {
         res
@@ -109,7 +103,7 @@ module.exports = {
       }
     } else {
       try {
-        await knex("carros").update({ destaque: 1 }).where({ id });
+        await knex("produtos").update({ destaque: 1 }).where({ id });
         res.status(200).json({ ok: 1 });
       } catch (error) {
         res
@@ -118,33 +112,31 @@ module.exports = {
       }
     }
   },
+  async estatistica(req,res){
+    const produtos = await knex 
+  .select(knex.raw('count(*) as PROD'))
+   .sum('preco AS SUM' )
+   .avg('preco As AVG')
+   .from('produtos')
+  
+   res.status(200).json(produtos);
+  },
+
+
   
   async destaques(req, res) {
-    const carros = await knex
-      .select("c.id", "c.modelo", "m.nome as marca", "c.ano", "c.preco", "c.foto", "c.destaque")
-      .from("carros as c")
-      .leftJoin("marcas as m", "c.marca_id", "m.id")
-      .where("c.destaque", true)
-      .orderBy("c.id", "desc");
-    res.status(200).json(carros);
+    const produtos = await knex
+      .select("p.id", "p.p_nome", "p.preco", "p.foto","p.descricao","p.destaque")
+      .from("produtos as p")
+      .where("p.destaque", true)
+      .orderBy("p.id", "desc");
+    res.status(200).json(produtos);
   },
   
-  async like(req,res){
-    const id = req.params.id;
-    dados = await knex("carros").where({id})
-    const numLike = dados[0].likes
-    try {
-      await knex("carros").update({likes: numLike+1}).where({id});
-      res.status(200).json({ok:1})
-    } catch (error) {
-      res.status(400)
-      .json({ok:0,msg:`erro na alteração${error.message}`})
-    }
-  },
   async destroy(req, res) {
     const id = req.params.id; // ou:  const { id } = req.params
     try {
-      await knex("carros").del().where({ id });
+      await knex("produtos").del().where({ id });
       res.status(200).json({ ok: 1 });
     } catch (error) {
       res.status(400).json({ ok: 0, msg: `Erro na exclusão: ${error.message}` });
